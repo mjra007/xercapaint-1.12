@@ -16,9 +16,7 @@ import xerca.xercapaint.common.XercaPaint;
 import xerca.xercapaint.common.packets.CanvasUpdatePacket;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Deque;
+import java.util.*;
 
 @SideOnly(Side.CLIENT)
 public class GuiCanvasEdit extends BasePalette {
@@ -45,7 +43,11 @@ public class GuiCanvasEdit extends BasePalette {
     private String canvasTitle = "";
     private String name = "";
     private int version = 0;
-
+    private int brushOpacityMeterX;
+    private int brushOpacityMeterY;
+    private static int brushOpacitySetting = 0;
+    private static float[] brushOpacities = {1.f, 0.75f, 0.5f, 0.25f};
+    private Set<Integer> draggedPoints = new HashSet<>();
     private static final Vec2f[] outlinePoss1 = {
             new Vec2f(0.f, 199.0f),
             new Vec2f(12.f, 199.0f),
@@ -98,19 +100,20 @@ public class GuiCanvasEdit extends BasePalette {
             long secs = System.currentTimeMillis()/1000;
             this.name = "" + player.getUniqueID().toString() + "_" + secs;
         }
+        updatePalettePos(0,0);
     }
 
     private int getPixelAt(int x, int y){
         return this.pixels[y*canvasPixelWidth + x];
     }
 
-    private void setPixelAt(int x, int y, PaletteUtil.Color color){
+    private void setPixelAt(int x, int y, PaletteUtil.Color color, float opacity){
         if(x >= 0 && y >= 0 && x < canvasPixelWidth && y < canvasPixelHeight){
-            this.pixels[y*canvasPixelWidth + x] = color.rgbVal();
+            this.pixels[y*canvasPixelWidth + x] = PaletteUtil.Color.mix(color, new PaletteUtil.Color(this.pixels[y*canvasPixelWidth + x]), opacity).rgbVal();
         }
     }
 
-    private void setPixelsAt(int mouseX, int mouseY, PaletteUtil.Color color, int brushSize){
+    private void setPixelsAt(int mouseX, int mouseY, PaletteUtil.Color color, int brushSize, float opacity){
         int x, y;
         final int pixelHalf = canvasPixelScale/2;
         switch (brushSize){
@@ -118,66 +121,66 @@ public class GuiCanvasEdit extends BasePalette {
                 x = (mouseX - canvasX)/ canvasPixelScale;
                 y = (mouseY - canvasY)/ canvasPixelScale;
 
-                setPixelAt(x, y, color);
+                setPixelAt(x, y, color, opacity);
                 break;
             case 1:
                 x = (mouseX - canvasX + pixelHalf)/ canvasPixelScale;
                 y = (mouseY - canvasY + pixelHalf)/ canvasPixelScale;
 
-                setPixelAt(x, y, color);
-                setPixelAt(x-1, y, color);
-                setPixelAt(x, y-1, color);
-                setPixelAt(x-1, y-1, color);
+                setPixelAt(x, y, color, opacity);
+                setPixelAt(x-1, y, color, opacity);
+                setPixelAt(x, y-1, color, opacity);
+                setPixelAt(x-1, y-1, color, opacity);
                 break;
             case 2:
                 x = (mouseX - canvasX + pixelHalf)/ canvasPixelScale;
                 y = (mouseY - canvasY + pixelHalf)/ canvasPixelScale;
 
-                setPixelAt(x-1, y+2, color);
-                setPixelAt(x, y+2, color);
+                setPixelAt(x-1, y+2, color, opacity);
+                setPixelAt(x, y+2, color, opacity);
 
-                setPixelAt(x-2, y+1, color);
-                setPixelAt(x-1, y+1, color);
-                setPixelAt(x, y+1, color);
-                setPixelAt(x+1, y+1, color);
+                setPixelAt(x-2, y+1, color, opacity);
+                setPixelAt(x-1, y+1, color, opacity);
+                setPixelAt(x, y+1, color, opacity);
+                setPixelAt(x+1, y+1, color, opacity);
 
-                setPixelAt(x-2, y, color);
-                setPixelAt(x-1, y, color);
-                setPixelAt(x, y, color);
-                setPixelAt(x+1, y, color);
+                setPixelAt(x-2, y, color, opacity);
+                setPixelAt(x-1, y, color, opacity);
+                setPixelAt(x, y, color, opacity);
+                setPixelAt(x+1, y, color, opacity);
 
-                setPixelAt(x-1, y-1, color);
-                setPixelAt(x, y-1, color);
+                setPixelAt(x-1, y-1, color, opacity);
+                setPixelAt(x, y-1, color, opacity);
                 break;
             case 3:
                 x = (mouseX - canvasX)/ canvasPixelScale;
                 y = (mouseY - canvasY)/ canvasPixelScale;
 
-                setPixelAt(x-1, y+2, color);
-                setPixelAt(x+0, y+2, color);
-                setPixelAt(x+1, y+2, color);
+                setPixelAt(x-1, y+2, color, opacity);
+                setPixelAt(x+0, y+2, color, opacity);
+                setPixelAt(x+1, y+2, color, opacity);
 
-                setPixelAt(x-2, y+1, color);
-                setPixelAt(x-1, y+1, color);
-                setPixelAt(x+0, y+1, color);
-                setPixelAt(x+1, y+1, color);
-                setPixelAt(x+2, y+1, color);
+                setPixelAt(x-2, y+1, color, opacity);
+                setPixelAt(x-1, y+1, color, opacity);
+                setPixelAt(x+0, y+1, color, opacity);
+                setPixelAt(x+1, y+1, color, opacity);
+                setPixelAt(x+2, y+1, color, opacity);
 
-                setPixelAt(x-2, y, color);
-                setPixelAt(x-1, y, color);
-                setPixelAt(x+0, y, color);
-                setPixelAt(x+1, y, color);
-                setPixelAt(x+2, y, color);
+                setPixelAt(x-2, y, color, opacity);
+                setPixelAt(x-1, y, color, opacity);
+                setPixelAt(x+0, y, color, opacity);
+                setPixelAt(x+1, y, color, opacity);
+                setPixelAt(x+2, y, color, opacity);
 
-                setPixelAt(x-2, y-1, color);
-                setPixelAt(x-1, y-1, color);
-                setPixelAt(x+0, y-1, color);
-                setPixelAt(x+1, y-1, color);
-                setPixelAt(x+2, y-1, color);
+                setPixelAt(x-2, y-1, color, opacity);
+                setPixelAt(x-1, y-1, color, opacity);
+                setPixelAt(x+0, y-1, color, opacity);
+                setPixelAt(x+1, y-1, color, opacity);
+                setPixelAt(x+2, y-1, color, opacity);
 
-                setPixelAt(x-1, y-2, color);
-                setPixelAt(x+0, y-2, color);
-                setPixelAt(x+1, y-2, color);
+                setPixelAt(x-1, y-2, color, opacity);
+                setPixelAt(x+0, y-2, color, opacity);
+                setPixelAt(x+1, y-2, color, opacity);
                 break;
         }
     }
@@ -210,6 +213,10 @@ public class GuiCanvasEdit extends BasePalette {
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         drawTexturedModalRect(brushMeterX, brushMeterY + (3 - brushSize)*brushSpriteSize, 15, 246, 10, 10);
         drawTexturedModalRect(brushMeterX, brushMeterY, brushSpriteX, brushSpriteY - brushSpriteSize*3, brushSpriteSize, brushSpriteSize*4);
+
+        //Draw opactiy meter
+        drawTexturedModalRect(brushOpacityMeterX, brushOpacityMeterY, brushOpacitySpriteX, brushOpacitySpriteY , brushOpacitySpriteSize, brushOpacitySpriteSize*4+3);
+        drawTexturedModalRect(brushOpacityMeterX-1, brushOpacityMeterY +brushOpacitySetting*(brushOpacitySpriteSize+1), 212, 240, 16, 16);
 
         // Draw brush and outline
         renderCursor(mouseX, mouseY);
@@ -281,6 +288,11 @@ public class GuiCanvasEdit extends BasePalette {
         return keyID == Keyboard.KEY_Z && isCtrlKeyDown() && !isShiftKeyDown() && !isAltKeyDown();
     }
 
+
+    private boolean inBrushOpacityMeter(int x, int y) {
+        return x < brushOpacityMeterX + brushOpacitySpriteSize && x >= brushOpacityMeterX && y < brushOpacityMeterY + brushOpacitySpriteSize*4+3 && y >= brushOpacityMeterY;
+    }
+
     @Override
     public void keyTyped(char typedChar, int keyCode) throws IOException {
         super.keyTyped(typedChar, keyCode);
@@ -288,6 +300,11 @@ public class GuiCanvasEdit extends BasePalette {
         if(isKeyComboCtrlZ(keyCode)){
             if(undoStack.size() > 0){
                 pixels = undoStack.pop();
+            }
+        }else if(keyCode == Keyboard.KEY_O){
+            brushOpacitySetting += 1;
+            if(brushOpacitySetting >= 4){
+                brushOpacitySetting = 0;
             }
         }
     }
@@ -315,9 +332,7 @@ public class GuiCanvasEdit extends BasePalette {
         undoStack.push(pixels.clone());
 
         if(inCanvas(mouseX, mouseY)){
-            touchedCanvas = true;
-            setPixelsAt(mouseX, mouseY, currentColor, brushSize);
-            dirty = true;
+            clickedCanvas(mouseX, mouseY, mouseButton);
         }
 
         if(inBrushMeter(mouseX, mouseY)){
@@ -326,7 +341,26 @@ public class GuiCanvasEdit extends BasePalette {
                 brushSize = selectedSize;
             }
         }
+        if(inBrushOpacityMeter(mouseX, mouseY)){
+            int relativeY = mouseY - brushOpacityMeterY;
+            int selectedOpacity = relativeY/(brushOpacitySpriteSize+1);
+            if(selectedOpacity >= 0 && selectedOpacity <= 3){
+                brushOpacitySetting = selectedOpacity;
+            }
+        }
+
         super.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+
+    public void clickedCanvas(int mouseX, int mouseY, int clickedMouseButton){
+        touchedCanvas = true;
+        if(clickedMouseButton == 0){//RIGHT
+            setPixelsAt(mouseX, mouseY, currentColor, brushSize, brushOpacities[brushOpacitySetting]);
+        }else if(clickedMouseButton == 1){//left
+            // "Erase" with right click
+            setPixelsAt(mouseX, mouseY, basicColors[basicColors.length-1], brushSize, 1.0f);
+        }
+        dirty = true;
     }
 
     @Override
@@ -338,14 +372,13 @@ public class GuiCanvasEdit extends BasePalette {
         super.mouseReleased(posX, posY, mouseButton);
     }
 
+
     @Override
     public void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
         if(inCanvas(mouseX, mouseY)){
-            touchedCanvas = true;
-            setPixelsAt(mouseX, mouseY, currentColor, brushSize);
-            dirty = true;
+            clickedCanvas(mouseX, mouseY, clickedMouseButton);
         }else{
-            if(inBrushMeter(lastClickX, lastClickY) == false && paletteClick(lastClickX, lastClickY) == false){
+            if(isCarryingPalette && !inBrushOpacityMeter(lastClickX, lastClickY) && !inBrushMeter(lastClickX, lastClickY) && !paletteClick(lastClickX, lastClickY)){
                 updatePalettePos(mouseX-lastClickX , mouseY-lastClickY);
                 lastClickY= mouseY;
                 lastClickX= mouseX;
@@ -358,8 +391,12 @@ public class GuiCanvasEdit extends BasePalette {
         super.updatePalettePos(deltaX,deltaY);
         canvasX += deltaX;
         canvasY += deltaY;
-        brushMeterX += (int)deltaX;
-        brushMeterY += (int)deltaY;
+
+        brushMeterX = canvasX + canvasWidth + 2;
+        brushMeterY = canvasY + canvasHeight/2 + 20;
+
+        brushOpacityMeterX = canvasX + canvasWidth + 2;
+        brushOpacityMeterY = canvasY + 10;
     }
 
     private boolean inCanvas(int x, int y) {

@@ -16,6 +16,9 @@ import static xerca.xercapaint.common.PaletteUtil.readCustomColorArrayFromNBT;
 
 public abstract class BasePalette extends GuiScreen {
     protected static final ResourceLocation noteGuiTextures = new ResourceLocation(XercaPaint.MODID, "textures/gui/palette.png");
+    final static int brushOpacitySpriteX = 196;
+    final static int brushOpacitySpriteY = 197;
+    final static int brushOpacitySpriteSize = 14;
     final static int dyeSpriteX = 240;
     final static int dyeSpriteSize = 16;
     final static int brushSpriteX = 0;

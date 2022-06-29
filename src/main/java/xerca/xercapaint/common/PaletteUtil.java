@@ -34,6 +34,30 @@ public class PaletteUtil {
             val += 0xFF000000;
             return val;
         }
+
+        static public Color mix(Color a, Color b, float ratio){
+            if(ratio == 1.f) {
+                return a;
+            }
+            else if(ratio == 0.f){
+                return b;
+            }
+            Color res = new Color(
+                    (int)(a.r*ratio) + (int)(b.r*(1-ratio)),
+                    (int)(a.g*ratio) + (int)(b.g*(1-ratio)),
+                    (int)(a.b*ratio) + (int)(b.b*(1-ratio))
+            );
+            int averageMaximum = (int)(Math.max(Math.max(a.r, a.g), a.b)*ratio) + (int)(Math.max(Math.max(b.r, b.g), b.b)*(1-ratio));
+
+            int maximumOfAverage = Math.max(Math.max(res.r, res.g), res.b);
+            int gainFactor = averageMaximum / maximumOfAverage;
+
+            res.r *= gainFactor;
+            res.g *= gainFactor;
+            res.b *= gainFactor;
+            return res;
+        }
+
     }
 
     public static class CustomColor {
