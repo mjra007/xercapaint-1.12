@@ -26,6 +26,8 @@ public abstract class BasePalette extends GuiScreen {
     final static int paletteHeight = 193;
     static int paletteX;
     static int paletteY;
+    int lastClickX =0;
+    int lastClickY = 0;
     final static PaletteUtil.Color waterColor = new PaletteUtil.Color(53, 118, 191);
     final static PaletteUtil.Color emptinessColor = new PaletteUtil.Color(255, 236, 229);
 
@@ -85,6 +87,7 @@ public abstract class BasePalette extends GuiScreen {
 
     boolean isCarryingColor = false;
     boolean isCarryingWater = false;
+    boolean isCarryingPalette = false;
     boolean dirty = false;
     PaletteUtil.Color carriedColor;
     PaletteUtil.Color currentColor = basicColors[0];
@@ -124,6 +127,11 @@ public abstract class BasePalette extends GuiScreen {
         }
     }
 
+    protected void updatePalettePos(int deltaX, int deltaY) {
+        paletteX += deltaX;
+        paletteY += deltaY;
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float f) {
         Minecraft.getMinecraft().getTextureManager().bindTexture(noteGuiTextures);
@@ -158,10 +166,10 @@ public abstract class BasePalette extends GuiScreen {
     // Mouse button 0: left, 1: right
     @Override
     public void mouseClicked(int posX, int posY, int mouseButton) throws IOException {
-        int mouseX = (int)Math.round(posX);
-        int mouseY = (int)Math.round(posY);
+        int mouseX = lastClickX = Math.round(posX);
+        int mouseY = lastClickY = Math.round(posY);
 
-        if(paletteClick(mouseX, mouseY)){
+        if(paletteClick(mouseX, mouseY)){ 
             int x = (mouseX - paletteX);
             int y = (mouseY - paletteY);
             Vec2f clickVec = new Vec2f(x, y);
@@ -175,6 +183,7 @@ public abstract class BasePalette extends GuiScreen {
                         carriedColor = currentColor = basicColors[i];
                         isCarryingColor = true;
                     }
+                    isCarryingPalette = false;
                     colorFound = true;
                     break;
                 }
@@ -189,6 +198,7 @@ public abstract class BasePalette extends GuiScreen {
                                 isCarryingColor = true;
                             }
                         }
+                        isCarryingPalette = false;
                         colorFound = true;
                         break;
                     }
@@ -198,9 +208,14 @@ public abstract class BasePalette extends GuiScreen {
             if(!colorFound) {
                 if(sqrDist(clickVec, waterCenter) <= sqrCustomRadius){
                     if(mouseButton == 0) {
+                        isCarryingPalette = false;
                         isCarryingWater = true;
                     }
                 }
+            }
+
+            if(!colorFound && !isCarryingWater){
+                isCarryingPalette = true;
             }
         }
         super.mouseClicked(mouseX, mouseY, mouseButton);
@@ -208,8 +223,9 @@ public abstract class BasePalette extends GuiScreen {
 
     @Override
     public void mouseReleased(int posX, int posY, int mouseButton) {
-        int mouseX = (int)Math.round(posX);
-        int mouseY = (int)Math.round(posY);
+        int mouseX = Math.round(posX);
+        int mouseY = Math.round(posY);
+        isCarryingPalette = false;
         if(isCarryingColor || isCarryingWater) {
             if (paletteClick(mouseX, mouseY)) {
                 float sqrCustomRadius = customColorRadius * customColorRadius;
@@ -233,7 +249,19 @@ public abstract class BasePalette extends GuiScreen {
             isCarryingColor = false;
             isCarryingWater = false;
         }
+
         super.mouseReleased(posX, posY, mouseButton);
+    }
+
+    @Override
+    protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
+        if (isCarryingPalette) {
+            super.mouseClickMove( mouseX,  mouseY, clickedMouseButton, timeSinceLastClick);
+            updatePalettePos(mouseX-lastClickX , mouseY-lastClickY);
+            lastClickY= mouseY;
+            lastClickX= mouseX;
+        }
+        super.mouseClickMove( mouseX,  mouseY, clickedMouseButton, timeSinceLastClick);
     }
 
     @Override

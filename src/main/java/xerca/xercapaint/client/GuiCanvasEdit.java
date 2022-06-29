@@ -8,7 +8,6 @@ import net.minecraft.util.math.Vec2f;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import org.lwjgl.LWJGLUtil;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import xerca.xercapaint.common.CanvasType;
@@ -28,8 +27,8 @@ public class GuiCanvasEdit extends BasePalette {
     private int canvasY = 40;
     private int canvasWidth;
     private int canvasHeight;
-    private final int brushMeterX = 420;
-    private final int brushMeterY = 120;
+    private int brushMeterX = 420;
+    private int brushMeterY = 120;
     private int canvasPixelScale;
     private int canvasPixelWidth;
     private int canvasPixelHeight;
@@ -345,8 +344,22 @@ public class GuiCanvasEdit extends BasePalette {
             touchedCanvas = true;
             setPixelsAt(mouseX, mouseY, currentColor, brushSize);
             dirty = true;
+        }else{
+            if(inBrushMeter(lastClickX, lastClickY) == false && paletteClick(lastClickX, lastClickY) == false){
+                updatePalettePos(mouseX-lastClickX , mouseY-lastClickY);
+                lastClickY= mouseY;
+                lastClickX= mouseX;
+            }
         }
         super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
+    }
+
+    protected void updatePalettePos(int deltaX, int deltaY) {
+        super.updatePalettePos(deltaX,deltaY);
+        canvasX += deltaX;
+        canvasY += deltaY;
+        brushMeterX += (int)deltaX;
+        brushMeterY += (int)deltaY;
     }
 
     private boolean inCanvas(int x, int y) {

@@ -21,23 +21,28 @@ public class GuiPalette extends BasePalette {
 
     @Override
     public void initGui() {
+        if (paletteX == -1000 || paletteY == -1000) {
+            paletteX = 140;
+            paletteY = 40;
+        }
+        updatePalettePos(0, 0);
     }
+
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float f) {
         super.drawScreen(mouseX, mouseY, f);
-
         renderCursor(mouseX, mouseY);
     }
 
-    private void renderCursor(int mouseX, int mouseY){
-        if(isCarryingColor){
+    private void renderCursor(int mouseX, int mouseY) {
+        if (isCarryingColor) {
             setGLColor(carriedColor);
-            drawTexturedModalRect(mouseX-brushSpriteSize/2, mouseY-brushSpriteSize/2, brushSpriteX+brushSpriteSize, brushSpriteY, dropSpriteWidth, brushSpriteSize);
+            drawTexturedModalRect(mouseX - brushSpriteSize / 2, mouseY - brushSpriteSize / 2, brushSpriteX + brushSpriteSize, brushSpriteY, dropSpriteWidth, brushSpriteSize);
 
-        }else if(isCarryingWater){
+        } else if (isCarryingWater) {
             setGLColor(waterColor);
-            drawTexturedModalRect(mouseX-brushSpriteSize/2, mouseY-brushSpriteSize/2, brushSpriteX+brushSpriteSize, brushSpriteY, dropSpriteWidth, brushSpriteSize);
+            drawTexturedModalRect(mouseX - brushSpriteSize / 2, mouseY - brushSpriteSize / 2, brushSpriteX + brushSpriteSize, brushSpriteY, dropSpriteWidth, brushSpriteSize);
         }
     }
 
@@ -48,4 +53,5 @@ public class GuiPalette extends BasePalette {
             XercaPaint.network.sendToServer(pack);
         }
     }
+
 }
