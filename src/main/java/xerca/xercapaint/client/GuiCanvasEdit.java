@@ -234,52 +234,60 @@ public class GuiCanvasEdit extends BasePalette {
         }else if(isCarryingWater){
             setGLColor(waterColor);
             drawTexturedModalRect(mouseX-brushSpriteSize/2, mouseY-brushSpriteSize/2, brushSpriteX+brushSpriteSize, brushSpriteY, dropSpriteWidth, brushSpriteSize);
+        }else if(isPickingColor){
+            drawOutline(mouseX, mouseY);
+            setGLColor(basicColors[basicColors.length-1]);
+            drawTexturedModalRect(mouseX, mouseY-colorPickerSize, colorPickerSpriteX, colorPickerSpriteY, colorPickerSize, colorPickerSize);
         }else{
-            if(inCanvas(mouseX, mouseY)){
-                // Render drawing outline
-                int x = 0;
-                int y = 0;
-                int outlineSize = 0;
-                int pixelHalf = canvasPixelScale/2;
-                if(brushSize == 0){
-                    x = ((mouseX - canvasX)/ canvasPixelScale)*canvasPixelScale + canvasX - 1;
-                    y = ((mouseY - canvasY)/ canvasPixelScale)*canvasPixelScale + canvasY - 1;
-                    outlineSize = canvasPixelScale + 2;
-                }
-                if(brushSize == 1){
-                    x = (((mouseX - canvasX + pixelHalf) / canvasPixelScale) - 1)*canvasPixelScale + canvasX - 1;
-                    y = (((mouseY - canvasY + pixelHalf) / canvasPixelScale) - 1)*canvasPixelScale + canvasY - 1;
-                    outlineSize = canvasPixelScale*2 + 2;
-                }
-                if(brushSize == 2){
-                    x = (((mouseX - canvasX + pixelHalf) / canvasPixelScale) - 2)*canvasPixelScale + canvasX - 1;
-                    y = (((mouseY - canvasY + pixelHalf) / canvasPixelScale) - 2)*canvasPixelScale + canvasY - 1;
-                    outlineSize = canvasPixelScale*4 + 2;
-                }
-                if(brushSize == 3){
-                    x = (((mouseX - canvasX)/ canvasPixelScale) - 2)*canvasPixelScale + canvasX - 1;
-                    y = (((mouseY - canvasY)/ canvasPixelScale) - 2)*canvasPixelScale + canvasY - 1;
-                    outlineSize = canvasPixelScale*5 + 2;
-                }
-
-                Vec2f textureVec;
-                if(canvasPixelScale == 10){
-                    textureVec = outlinePoss1[brushSize];
-                }
-                else{
-                    textureVec = outlinePoss2[brushSize];
-                }
-
-                GlStateManager.color(0.3F, 0.3F, 0.3F, 1.0F);
-                drawTexturedModalRect(x, y, (int)textureVec.x, (int)textureVec.y, outlineSize, outlineSize);
-
-            }
+            drawOutline(mouseX, mouseY);
 
             drawRect(mouseX, mouseY, mouseX + 3, mouseY + 3, currentColor.rgbVal());
 
             GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
             int trueBrushY = brushSpriteY - brushSpriteSize*brushSize;
             drawTexturedModalRect(mouseX, mouseY, brushSpriteX, trueBrushY, brushSpriteSize, brushSpriteSize);
+        }
+    }
+
+    private void drawOutline(int mouseX, int mouseY) {
+        if(inCanvas(mouseX, mouseY)){
+            // Render drawing outline
+            int x = 0;
+            int y = 0;
+            int outlineSize = 0;
+            int pixelHalf = canvasPixelScale/2;
+            if(brushSize == 0){
+                x = ((mouseX - canvasX)/ canvasPixelScale)*canvasPixelScale + canvasX - 1;
+                y = ((mouseY - canvasY)/ canvasPixelScale)*canvasPixelScale + canvasY - 1;
+                outlineSize = canvasPixelScale + 2;
+            }
+            if(brushSize == 1){
+                x = (((mouseX - canvasX + pixelHalf) / canvasPixelScale) - 1)*canvasPixelScale + canvasX - 1;
+                y = (((mouseY - canvasY + pixelHalf) / canvasPixelScale) - 1)*canvasPixelScale + canvasY - 1;
+                outlineSize = canvasPixelScale*2 + 2;
+            }
+            if(brushSize == 2){
+                x = (((mouseX - canvasX + pixelHalf) / canvasPixelScale) - 2)*canvasPixelScale + canvasX - 1;
+                y = (((mouseY - canvasY + pixelHalf) / canvasPixelScale) - 2)*canvasPixelScale + canvasY - 1;
+                outlineSize = canvasPixelScale*4 + 2;
+            }
+            if(brushSize == 3){
+                x = (((mouseX - canvasX)/ canvasPixelScale) - 2)*canvasPixelScale + canvasX - 1;
+                y = (((mouseY - canvasY)/ canvasPixelScale) - 2)*canvasPixelScale + canvasY - 1;
+                outlineSize = canvasPixelScale*5 + 2;
+            }
+
+            Vec2f textureVec;
+            if(canvasPixelScale == 10){
+                textureVec = outlinePoss1[brushSize];
+            }
+            else{
+                textureVec = outlinePoss2[brushSize];
+            }
+
+            GlStateManager.color(0.3F, 0.3F, 0.3F, 1.0F);
+            drawTexturedModalRect(x, y, (int)textureVec.x, (int)textureVec.y, outlineSize, outlineSize);
+
         }
     }
 
@@ -314,10 +322,18 @@ public class GuiCanvasEdit extends BasePalette {
         super.handleMouseInput();
         int wheelState = Mouse.getEventDWheel();
         if (wheelState != 0) {
-            final int maxBrushSize = 3;
-            brushSize += wheelState > 0 ? 1 : -1;
-            if (brushSize > maxBrushSize) brushSize = 0;
-            else if (brushSize < 0) brushSize = maxBrushSize;
+            if(inBrushOpacityMeter(Mouse.getX(), Mouse.getY())){
+                final int maxBrushOpacity = 3;
+                brushOpacitySetting += wheelState < 0 ? 1 : -1;
+                if (brushOpacitySetting > maxBrushOpacity) brushOpacitySetting = 0;
+                else if (brushOpacitySetting < 0) brushOpacitySetting = maxBrushOpacity;
+            }
+            else{
+                final int maxBrushSize = 3;
+                brushSize += wheelState > 0 ? 1 : -1;
+                if (brushSize > maxBrushSize) brushSize = 0;
+                else if (brushSize < 0) brushSize = maxBrushSize;
+            }
         }
     }
 
@@ -332,7 +348,18 @@ public class GuiCanvasEdit extends BasePalette {
         undoStack.push(pixels.clone());
 
         if(inCanvas(mouseX, mouseY)){
-            clickedCanvas(mouseX, mouseY, mouseButton);
+            if(isPickingColor){
+                int x = (mouseX - canvasX)/ canvasPixelScale;
+                int y = (mouseY - canvasY)/ canvasPixelScale;
+                if(x >= 0 && y >= 0 && x < canvasPixelWidth && y < canvasPixelHeight){
+                    int color = getPixelAt(x, y);
+                    carriedColor = new PaletteUtil.Color(color);
+                    setCarryingColor();
+                }
+            }
+            else{
+                clickedCanvas(mouseX, mouseY, mouseButton);
+            }
         }
 
         if(inBrushMeter(mouseX, mouseY)){
@@ -374,17 +401,17 @@ public class GuiCanvasEdit extends BasePalette {
 
 
     @Override
-    public void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
-        if(inCanvas(mouseX, mouseY)){
-            clickedCanvas(mouseX, mouseY, clickedMouseButton);
+    public void mouseClickMove(int posX, int posY, int clickedMouseButton, long timeSinceLastClick) {
+        if(inCanvas(posX, posY)){
+            clickedCanvas(posX, posY, clickedMouseButton);
         }else{
             if(isCarryingPalette && !inBrushOpacityMeter(lastClickX, lastClickY) && !inBrushMeter(lastClickX, lastClickY) && !paletteClick(lastClickX, lastClickY)){
-                updatePalettePos(mouseX-lastClickX , mouseY-lastClickY);
-                lastClickY= mouseY;
-                lastClickX= mouseX;
+                updatePalettePos(posX-lastClickX , posY-lastClickY);
+                lastClickY= posY;
+                lastClickX= posX;
             }
         }
-        super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
+        super.mouseClickMove(posX, posY, clickedMouseButton, timeSinceLastClick);
     }
 
     protected void updatePalettePos(int deltaX, int deltaY) {

@@ -27,6 +27,11 @@ public abstract class BasePalette extends GuiScreen {
     final static int dropSpriteWidth = 6;
     final static int paletteWidth = 157;
     final static int paletteHeight = 193;
+    static final int colorPickerSpriteX = 25;
+    static final int colorPickerSpriteY = 242;
+    static final int colorPickerPosX = 98;
+    static final int colorPickerPosY = 62;
+    static final int colorPickerSize = 14;
     static int paletteX;
     static int paletteY;
     int lastClickX =0;
@@ -91,12 +96,14 @@ public abstract class BasePalette extends GuiScreen {
     boolean isCarryingColor = false;
     boolean isCarryingWater = false;
     boolean isCarryingPalette = false;
+    boolean paletteComplete = false;
+
+    boolean isPickingColor = false;
     boolean dirty = false;
     PaletteUtil.Color carriedColor;
     PaletteUtil.Color currentColor = basicColors[0];
     PaletteUtil.CustomColor[] customColors;
     boolean[] basicColorFlags;
-
     BasePalette(ITextComponent titleIn, NBTTagCompound paletteTag) {
         super();
         this.customColors = new PaletteUtil.CustomColor[12];
@@ -114,13 +121,17 @@ public abstract class BasePalette extends GuiScreen {
             }
 
             if(paletteTag.hasKey("basic")){
+                paletteComplete = true;
                 byte[] basics = paletteTag.getByteArray("basic");
                 for(int i=0; i<basics.length; i++){
                     basicColorFlags[i] = basics[i] > 0;
+                    paletteComplete &= basicColorFlags[i];
                 }
             }
             else{
-
+                for(int i=0; i < customColors.length; i++){
+                    customColors[i] = new PaletteUtil.CustomColor();
+                }
             }
         }
         else{
@@ -131,10 +142,9 @@ public abstract class BasePalette extends GuiScreen {
     }
 
     protected void updatePalettePos(int deltaX, int deltaY) {
-        paletteX += deltaX;
+        paletteX += deltaX ;
         paletteY += deltaY;
     }
-
     @Override
     public void drawScreen(int mouseX, int mouseY, float f) {
         Minecraft.getMinecraft().getTextureManager().bindTexture(noteGuiTextures);
@@ -163,7 +173,11 @@ public abstract class BasePalette extends GuiScreen {
         }
 
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-        drawTexturedModalRect(paletteX, paletteY, 0, 0, paletteWidth, paletteHeight);
+        drawTexturedModalRect(paletteX, paletteY , 0, 0, paletteWidth, paletteHeight);
+
+        if(paletteComplete) {
+            drawTexturedModalRect(paletteX + colorPickerPosX, paletteY + colorPickerPosY, colorPickerSpriteX, colorPickerSpriteY, colorPickerSize, colorPickerSize);
+        }
     }
 
     // Mouse button 0: left, 1: right
@@ -184,6 +198,7 @@ public abstract class BasePalette extends GuiScreen {
                 if(basicColorFlags[i] && sqrDist(clickVec, basicColorCenters[i]) <= sqrBasicRadius){
                     if(mouseButton == 0){
                         carriedColor = currentColor = basicColors[i];
+                        setCarryingColor();
                         isCarryingColor = true;
                     }
                     isCarryingPalette = false;
@@ -198,7 +213,7 @@ public abstract class BasePalette extends GuiScreen {
                         if(mouseButton == 0) {
                             if(customColors[i].getNumberOfColors() > 0){
                                 carriedColor = currentColor = customColors[i].getColor();
-                                isCarryingColor = true;
+                                setCarryingColor();
                             }
                         }
                         isCarryingPalette = false;
@@ -211,8 +226,15 @@ public abstract class BasePalette extends GuiScreen {
             if(!colorFound) {
                 if(sqrDist(clickVec, waterCenter) <= sqrCustomRadius){
                     if(mouseButton == 0) {
-                        isCarryingPalette = false;
-                        isCarryingWater = true;
+                        setCarryingWater();
+                    }
+                }
+            }
+
+            if(paletteComplete && !isCarryingWater && !isCarryingColor){
+                if(x >= colorPickerPosX && x < colorPickerPosX + colorPickerSize && y >= colorPickerPosY && y < colorPickerPosY + colorPickerSize){
+                    if(mouseButton == 0) {
+                        setPickingColor(); 
                     }
                 }
             }
@@ -222,6 +244,24 @@ public abstract class BasePalette extends GuiScreen {
             }
         }
         super.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+
+    protected void setCarryingWater(){
+        isCarryingWater = true;
+        isCarryingColor = false;
+        isPickingColor = false;
+    }
+
+    protected void setCarryingColor(){
+        isCarryingWater = false;
+        isCarryingColor = true;
+        isPickingColor = false;
+    }
+
+    protected void setPickingColor(){
+        isCarryingWater = false;
+        isCarryingColor = false;
+        isPickingColor = true;
     }
 
     @Override
