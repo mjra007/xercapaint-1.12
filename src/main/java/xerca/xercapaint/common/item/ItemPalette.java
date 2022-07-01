@@ -3,14 +3,13 @@ package xerca.xercapaint.common.item;
 import javax.annotation.Nullable;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.IItemPropertyGetter;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.NonNullList;
+import net.minecraft.util.*;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.translation.I18n;
 import net.minecraft.world.World;
@@ -27,6 +26,14 @@ public class ItemPalette extends Item {
         this.setUnlocalizedName(name);
         this.setCreativeTab(Items.paintTab);
         this.setMaxStackSize(1);
+
+        this.addPropertyOverride(new ResourceLocation(XercaPaint.MODID, "colors"), new IItemPropertyGetter() {
+            @SideOnly(Side.CLIENT)
+            @Override
+            public float apply(ItemStack stack, @Nullable World worldIn, @Nullable EntityLivingBase entityIn) {
+                return (float)ItemPalette.basicColorCount(stack)/16.0F;
+            }
+        });
     }
 
     @Override
@@ -58,6 +65,27 @@ public class ItemPalette extends Item {
         }
     }
 
+    public static boolean isFull(ItemStack stack){
+        return basicColorCount(stack) == 16;
+    }
+
+    public static int basicColorCount(ItemStack stack){
+        if(stack.getItem() != Items.ITEM_PALETTE){
+            return 0;
+        }
+        NBTTagCompound tag = stack.getTagCompound();
+        if(tag != null && tag.getKeySet().contains("basic")){
+            byte[] basicColors = tag.getByteArray("basic");
+            if (basicColors.length == 16) {
+                int basicCount = 0;
+                for(byte basicColor : basicColors){
+                    basicCount += basicColor;
+                }
+                return basicCount;
+            }
+        }
+        return 0;
+    }
     @Override
     @SideOnly(Side.CLIENT)
     public void addInformation(ItemStack stack, @Nullable World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
