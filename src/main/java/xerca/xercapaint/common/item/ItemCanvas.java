@@ -1,18 +1,17 @@
 package xerca.xercapaint.common.item;
 
-import net.minecraft.entity.EntityHanging;
-import net.minecraft.entity.item.EntityItemFrame;
-import net.minecraft.entity.item.EntityPainting;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.IItemPropertyGetter;
 import net.minecraft.item.ItemHangingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
+import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+import xerca.xercapaint.client.CanvasItemRenderer;
 import xerca.xercapaint.common.CanvasType;
 import xerca.xercapaint.common.XercaPaint;
 import xerca.xercapaint.common.entity.EntityCanvas;
@@ -29,7 +28,18 @@ public class ItemCanvas extends ItemHangingEntity {
         this.setCreativeTab(Items.paintTab);
         this.setMaxStackSize(1);
         this.canvasType = canvasType;
+
+        this.setTileEntityItemStackRenderer(new CanvasItemRenderer());
+        this.addPropertyOverride(new ResourceLocation(XercaPaint.MODID, "drawn"), new IItemPropertyGetter() {
+            @SideOnly(Side.CLIENT)
+            @Override
+            public float apply(ItemStack stack, @Nullable World worldIn, @Nullable EntityLivingBase entityIn) {
+                if(!stack.hasTagCompound()) return 0.0f;
+                else return 1.0F;
+            }
+        });
     }
+
 
     @Override
     public ActionResult<ItemStack> onItemRightClick(World worldIn, EntityPlayer playerIn, EnumHand hand) {

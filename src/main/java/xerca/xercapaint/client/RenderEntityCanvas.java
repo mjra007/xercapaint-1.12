@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -13,9 +14,13 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import net.minecraftforge.fml.client.registry.IRenderFactory;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import scala.xml.dtd.impl.Base;
+import xerca.xercapaint.common.PaletteUtil;
 import xerca.xercapaint.common.XercaPaint;
 import xerca.xercapaint.common.entity.EntityCanvas;
 
@@ -27,7 +32,7 @@ import java.util.Map;
 @ParametersAreNonnullByDefault
 public class RenderEntityCanvas extends Render<EntityCanvas> {
     static private final ResourceLocation backLocation = new ResourceLocation("minecraft", "textures/blocks/planks_birch.png");
-
+    static RenderEntityCanvas theInstance;
     private final TextureManager textureManager;
     private final Map<String, RenderEntityCanvas.Instance> loadedCanvases = Maps.newHashMap();
 
@@ -51,11 +56,26 @@ public class RenderEntityCanvas extends Render<EntityCanvas> {
         super.doRender(canvas, x, y, z, yaw, partialTick);
     }
 
+    RenderEntityCanvas.Instance getMapRendererInstance(NBTTagCompound tag, int width, int height) {
+        RenderEntityCanvas.Instance instance = this.loadedCanvases.get(tag.getString("name"));
+        if (instance == null) {
+            instance = new Instance(tag, width, height);
+            this.loadedCanvases.put(tag.getString("name"), instance);
+        }else{
+            int currentVersion = tag.getInteger("v");
+            if(instance.version < currentVersion){
+                instance.updateCanvasTexture(tag);
+            }
+        }
+
+        return instance;
+    }
 
     public static class RenderEntityCanvasFactory implements IRenderFactory<EntityCanvas> {
         @Override
         public Render<? super EntityCanvas> createRenderFor(RenderManager manager) {
-            return new RenderEntityCanvas(manager);
+            theInstance = new RenderEntityCanvas(manager);
+            return theInstance;
         }
     }
 
@@ -109,6 +129,14 @@ public class RenderEntityCanvas extends Render<EntityCanvas> {
             this.height = canvas.getHeightPixels();
             this.canvasTexture = new DynamicTexture(width, height);
             this.location = RenderEntityCanvas.this.textureManager.getDynamicTextureLocation("canvas/" + tag.getString("name"), this.canvasTexture);
+            updateCanvasTexture(tag);
+        }
+
+        private Instance(NBTTagCompound tag, int width, int height) {
+            this.width = width;
+            this.height = height;
+            this.canvasTexture = new DynamicTexture(width, height);
+            this.location = RenderEntityCanvas.this.textureManager.getDynamicTextureLocation("canvas/" + tag.getString("name"), this.canvasTexture);
 
             updateCanvasTexture(tag);
         }
@@ -139,9 +167,10 @@ public class RenderEntityCanvas extends Render<EntityCanvas> {
             canvasTexture.updateDynamicTexture();
         }
 
-        public void render(double x, double y, double z, float yaw, float partialTick, EnumFacing facing) {
+        public void render( double x, double y, double z, float yaw, float partialTick, EnumFacing facing) {
             final float wScale = width/16.0f;
             final float hScale = height/16.0f;
+            int lightmap = 15728880;
 
             GlStateManager.pushMatrix();
             final float xOffset = facing.getFrontOffsetX();
@@ -150,7 +179,8 @@ public class RenderEntityCanvas extends Render<EntityCanvas> {
             GlStateManager.translate(x + zOffset*0.5d*wScale, y + yOffset*0.5d*hScale, z - xOffset*0.5d*wScale);
 
             GlStateManager.rotate(180.0F - yaw, 0.0F, 1.0F, 0.0F);
-//            GlStateManager.disableLighting();
+            GlStateManager.disableLighting();
+            RenderHelper.enableStandardItemLighting();
             GlStateManager.enableRescaleNormal();
 
             float f = 1.0f/32.0f;
@@ -202,11 +232,85 @@ public class RenderEntityCanvas extends Render<EntityCanvas> {
 
             tessellator.draw();
             GlStateManager.enableAlpha();
+            RenderHelper.disableStandardItemLighting();
 
-//            GlStateManager.enableLighting();
+            GlStateManager.enableLighting();
             GlStateManager.disableRescaleNormal();
             GlStateManager.popMatrix();
         }
+
+        public void renderItemStack() {
+            final float wScale = width/16.0f;
+            final float hScale = height/16.0f;
+
+            GlStateManager.pushMatrix();
+            final float xOffset = EnumFacing.UP.getFrontOffsetX();
+            final float zOffset = EnumFacing.UP.getFrontOffsetZ();
+            final float yOffset = EnumFacing.UP.getFrontOffsetY();
+
+            GlStateManager.rotate( 180f, 0.0F, 1.0F, 0.0F);
+            GlStateManager.enableRescaleNormal();
+
+            float f = 1.0f/32.0f;
+            GlStateManager.translate(-0.75, 0.5, -0.5);
+            if(wScale > 1 || hScale > 1){
+                f /= 3.3f;
+            }else{
+                f /= 2.0f;
+            }
+
+            GlStateManager.scale(f, f, f);
+            Tessellator tessellator = Tessellator.getInstance();
+            BufferBuilder bufferbuilder = tessellator.getBuffer();
+            textureManager.bindTexture(location);
+            GlStateManager.disableAlpha();
+            bufferbuilder.begin(7, DefaultVertexFormats.POSITION_TEX_NORMAL);
+
+            // Draw the front
+            bufferbuilder.pos(0.0D, 32.0D*hScale, -1.0D).tex(1.0D, 0.0D).normal(xOffset, yOffset, zOffset).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 32.0D*hScale, -1.0D).tex(0.0D, 0.0D).normal(xOffset, yOffset, zOffset).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 0.0D, -1.0D).tex(0.0D, 1.0D).normal(xOffset, yOffset, zOffset).endVertex();
+            bufferbuilder.pos(0.0D, 0.0D, -1.0D).tex(1.0D, 1.0D).normal(xOffset, yOffset, zOffset).endVertex();
+            tessellator.draw();
+
+            // Draw the back and sides
+            final double sideWidth = 1.0D/16.0D;
+            bufferbuilder = tessellator.getBuffer();
+            textureManager.bindTexture(backLocation);
+            bufferbuilder.begin(7, DefaultVertexFormats.POSITION_TEX);
+            bufferbuilder.pos(0.0D, 0.0D, 1.0F).tex(0.0D, 0.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 0.0D, 1.0F).tex(1.0D, 0.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 32.0D*hScale, 1.0F).tex(1.0D, 1.0D).endVertex();
+            bufferbuilder.pos(0.0D, 32.0D*hScale, 1.0F).tex(0.0D, 1.0D).endVertex();
+
+            // Sides
+            bufferbuilder.pos(0.0D, 0.0D, 1.0F).tex(sideWidth, 0.0D).endVertex();
+            bufferbuilder.pos(0.0D, 32.0D*hScale, 1.0F).tex(sideWidth, 1.0D).endVertex();
+            bufferbuilder.pos(0.0D, 32.0D*hScale, -1.0F).tex(0.0D, 1.0D).endVertex();
+            bufferbuilder.pos(0.0D, 0.0D, -1.0F).tex(0.0D, 0.0D).endVertex();
+
+            bufferbuilder.pos(0.0D, 32.0D*hScale, 1.0F).tex(0.0D, 0.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 32.0D*hScale, 1.0F).tex(1.0D, 0.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 32.0D*hScale, -1.0F).tex(1.0D, sideWidth).endVertex();
+            bufferbuilder.pos(0.0D, 32.0D*hScale, -1.0F).tex(0.0D, sideWidth).endVertex();
+
+            bufferbuilder.pos(32.0D*wScale, 0.0D, -1.0F).tex(0.0D, 0.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 32.0D*hScale, -1.0F).tex(0.0D, 1.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 32.0D*hScale, 1.0F).tex(sideWidth, 1.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 0.0D, 1.0F).tex(sideWidth, 0.0D).endVertex();
+
+            bufferbuilder.pos(0.0D, 0.0D, -1.0F).tex(0.0D, 1.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 0.0D, -1.0F).tex(1.0D, 1.0D).endVertex();
+            bufferbuilder.pos(32.0D*wScale, 0.0D, 1.0F).tex(1.0D, 1.0D-sideWidth).endVertex();
+            bufferbuilder.pos(0.0D, 0.0D, 1.0F).tex(0.0D, 1.0D-sideWidth).endVertex();
+
+            tessellator.draw();
+            GlStateManager.enableAlpha();
+
+            GlStateManager.disableRescaleNormal();
+            GlStateManager.popMatrix();
+        }
+
 
         public void close() {
 //            this.canvasTexture.close();

@@ -52,6 +52,7 @@ public final class Items {
                     new ItemCanvas("item_canvas_long", CanvasType.LONG),
                     new ItemCanvas("item_canvas_tall", CanvasType.TALL)
             );
+
         }
 
         @SubscribeEvent
