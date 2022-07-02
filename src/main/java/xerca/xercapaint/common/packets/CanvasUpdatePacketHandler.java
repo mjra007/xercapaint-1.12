@@ -52,9 +52,11 @@ public class CanvasUpdatePacketHandler implements IMessageHandler<CanvasUpdatePa
             comp.setIntArray("pixels", msg.getPixels());
             comp.setString("name", msg.getName());
             comp.setInteger("v", msg.getVersion());
+            comp.setInteger("generation", 0);
             if (msg.getSigned()) {
                 comp.setString("author", pl.getName());
                 comp.setString("title", msg.getTitle().trim());
+                comp.setInteger("generation", 1);
             }
 
             if (!palette.isEmpty() && palette.getItem() == Items.ITEM_PALETTE) {

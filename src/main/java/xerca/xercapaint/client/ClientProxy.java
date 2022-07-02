@@ -36,7 +36,8 @@ public class ClientProxy extends Proxy {
         }
 
         if(heldItem.getItem() instanceof ItemCanvas){
-            if(offhandItem.isEmpty()){
+            NBTTagCompound tag = heldItem.getTagCompound();
+            if(offhandItem.isEmpty() || (tag != null && tag.getInteger("generation") > 0)){
                 minecraft.displayGuiScreen(new GuiCanvasView(heldItem.getTagCompound(), new TextComponentTranslation("item.item_canvas.name"), ((ItemCanvas)heldItem.getItem()).getCanvasType()));
             }else if(offhandItem.getItem() instanceof ItemPalette){
                 minecraft.displayGuiScreen(new GuiCanvasEdit(minecraft.player,
@@ -47,8 +48,16 @@ public class ClientProxy extends Proxy {
             if(offhandItem.isEmpty()){
                 minecraft.displayGuiScreen(new GuiPalette(heldItem.getTagCompound(), new TextComponentTranslation("item.item_palette.name")));
             }else if(offhandItem.getItem() instanceof ItemCanvas){
-                minecraft.displayGuiScreen(new GuiCanvasEdit(minecraft.player,
-                        offhandItem.getTagCompound(), heldItem.getTagCompound(), new TextComponentTranslation("item.item_canvas.name"), ((ItemCanvas)offhandItem.getItem()).getCanvasType()));
+
+                NBTTagCompound tag = heldItem.getTagCompound();
+                if(tag != null && tag.getInteger("generation") > 0){
+                    minecraft.displayGuiScreen(new GuiCanvasView(offhandItem.getTagCompound(), new TextComponentTranslation("item.item_canvas.name"), ((ItemCanvas)offhandItem.getItem()).getCanvasType()));
+                }
+                else{
+                    minecraft.displayGuiScreen(new GuiCanvasEdit(minecraft.player,
+                            offhandItem.getTagCompound(), tag, new TextComponentTranslation("item.item_canvas.name"), ((ItemCanvas)offhandItem.getItem()).getCanvasType()));
+                }
+
             }
         }
     }

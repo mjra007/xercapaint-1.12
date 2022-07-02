@@ -145,8 +145,14 @@ public abstract class BasePalette extends GuiScreen {
         paletteX += deltaX ;
         paletteY += deltaY;
     }
+
+    protected void superDrawscreen(int mouseX, int mouseY, float f) {
+        super.drawScreen(mouseX, mouseY, f);
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float f) {
+        super.drawScreen(mouseX, mouseY, f);
         Minecraft.getMinecraft().getTextureManager().bindTexture(noteGuiTextures);
 
         // Draw basic colors

@@ -1,6 +1,7 @@
 {
   "recipes": {
     "crafting_special_palette_crafting":"xerca.xercapaint.common.item.crafting.RecipeCraftPalette$Factory",
-    "crafting_special_palette_filling":"xerca.xercapaint.common.item.crafting.RecipeFillPalette$Factory"
+    "crafting_special_palette_filling":"xerca.xercapaint.common.item.crafting.RecipeFillPalette$Factory",
+    "crafting_special_canvas_cloning":"xerca.xercapaint.common.item.crafting.RecipeCanvasCloning$Factory"
   }
 }

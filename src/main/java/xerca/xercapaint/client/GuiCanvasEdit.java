@@ -1,6 +1,10 @@
 package xerca.xercapaint.client;
 
+import com.mojang.realmsclient.gui.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
@@ -18,6 +22,8 @@ import xerca.xercapaint.common.packets.CanvasUpdatePacket;
 import java.io.IOException;
 import java.util.*;
 
+import static net.minecraft.util.ChatAllowedCharacters.isAllowedCharacter;
+
 @SideOnly(Side.CLIENT)
 public class GuiCanvasEdit extends BasePalette {
     private static final ResourceLocation noteGuiTextures = new ResourceLocation(XercaPaint.MODID, "textures/gui/palette.png");
@@ -34,10 +40,15 @@ public class GuiCanvasEdit extends BasePalette {
     private boolean touchedCanvas = false;
     private boolean undoStarted = false;
 
+    private GuiButton buttonSign;
+    private GuiButton buttonCancel;
+    private GuiButton buttonFinalize;
+    private GuiButton buttonHelpToggle;
     private final EntityPlayer editingPlayer;
 
     private CanvasType canvasType;
     private boolean isSigned = false;
+    private boolean gettingSigned;
     private int[] pixels;
     private String authorName = "";
     private String canvasTitle = "";
@@ -48,6 +59,7 @@ public class GuiCanvasEdit extends BasePalette {
     private static int brushOpacitySetting = 0;
     private static float[] brushOpacities = {1.f, 0.75f, 0.5f, 0.25f};
     private Set<Integer> draggedPoints = new HashSet<>();
+
     private static final Vec2f[] outlinePoss1 = {
             new Vec2f(0.f, 199.0f),
             new Vec2f(12.f, 199.0f),
@@ -64,6 +76,7 @@ public class GuiCanvasEdit extends BasePalette {
 
     private static final int maxUndoLength = 16;
     private Deque<int[]> undoStack = new ArrayDeque<>(maxUndoLength);
+    private int updateCount =0;
 
     protected GuiCanvasEdit(EntityPlayer player, NBTTagCompound canvasTag, NBTTagCompound paletteTag, ITextComponent title, CanvasType canvasType) {
         super(title, paletteTag);
@@ -101,6 +114,7 @@ public class GuiCanvasEdit extends BasePalette {
             this.name = "" + player.getUniqueID().toString() + "_" + secs;
         }
         updatePalettePos(0,0);
+
     }
 
     private int getPixelAt(int x, int y){
@@ -185,41 +199,129 @@ public class GuiCanvasEdit extends BasePalette {
         }
     }
 
+
+
+
     @Override
     public void initGui() {
-        // Hide mouse cursor
-//        GLFW.glfwSetInputMode(this.getMinecraft().mainWindow.getHandle(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
         Mouse.setGrabbed(true);
+        final int padding = 40;
+        final int paletteCanvasX = (this.width - (paletteWidth + canvasWidth + padding)) / 2;
+        canvasX = paletteCanvasX + paletteWidth + padding;
+
+        paletteX = paletteCanvasX;
+        paletteY = 40;
+
+        brushOpacityMeterX  = brushMeterX = canvasX + canvasWidth + 2;
+
+
+        // Hide mouse cursor
+
+        int x = canvasX;
+        int y = canvasY + canvasHeight + 10;
+        this.buttonSign = this.addButton(new GuiButton( 0 , this.width-198, this.height-100, 98, 20, I18n.format("canvas.signButton")){
+            @Override
+            public boolean mousePressed(Minecraft mc, int mouseX, int mouseY) {
+                if(super.mousePressed(mc, mouseX, mouseY)) {
+                    if (!isSigned) {
+                        gettingSigned = true;
+                        updateButtons();
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
+        this.buttonFinalize = this.addButton(new GuiButton(1, canvasX - 100, 100, 98, 20, I18n.format("canvas.finalizeButton"))
+        {
+            @Override
+            public boolean mousePressed(Minecraft mc, int mouseX, int mouseY) {
+                if(super.mousePressed(mc, mouseX, mouseY)){
+                    if (!isSigned) {
+                        dirty = true;
+                        isSigned = true;
+                        if(mc != null){
+                            mc.displayGuiScreen(null);
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        });
+        this.buttonCancel = this.addButton(new GuiButton( 2, canvasX - 100, 130, 98, 20, I18n.format("gui.cancel")){
+            @Override
+            public boolean mousePressed(Minecraft mc, int mouseX, int mouseY) {
+                if(super.mousePressed(mc, mouseX, mouseY)){
+                    if (!isSigned) {
+                        gettingSigned = false;
+                        updateButtons();
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
+
+        updateButtons();
+    }
+
+    private void updateButtons() {
+        if (!this.isSigned) {
+            this.buttonSign.visible = !this.gettingSigned;
+            this.buttonCancel.visible = this.gettingSigned;
+            this.buttonFinalize.visible = this.gettingSigned;
+            this.buttonFinalize.enabled = !this.canvasTitle.trim().isEmpty();
+        }
+    }
+
+    @Override
+    public void updateScreen() {
+        super.updateScreen();
+        ++updateCount;
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float f) {
-        super.drawScreen(mouseX, mouseY, f);
-
-        // Draw the canvas
-        for(int i=0; i<canvasPixelHeight; i++){
-            for(int j=0; j<canvasPixelWidth; j++){
-                int y = canvasY + i* canvasPixelScale;
-                int x = canvasX + j* canvasPixelScale;
-                drawRect(x, y, x + canvasPixelScale, y + canvasPixelScale, getPixelAt(j, i));
+        if(!gettingSigned) {
+            super.drawScreen(mouseX, mouseY, f);
+        }
+        else {
+            super.superDrawscreen(mouseX, mouseY, f);
+        }
+            // Draw the canvas
+            for(int i=0; i<canvasPixelHeight; i++){
+                for(int j=0; j<canvasPixelWidth; j++){
+                    int y = canvasY + i* canvasPixelScale;
+                    int x = canvasX + j* canvasPixelScale;
+                    drawRect(x, y, x + canvasPixelScale, y + canvasPixelScale, getPixelAt(j, i));
+                }
             }
+
+        if(!gettingSigned){
+            // Draw brush meter
+            for(int i=0; i<4; i++){
+                int y = brushMeterY + i*brushSpriteSize;
+                drawRect(brushMeterX, y, brushMeterX + 3, y + 3, currentColor.rgbVal());
+            }
+
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+            drawTexturedModalRect(brushMeterX, brushMeterY + (3 - brushSize)*brushSpriteSize, 15, 246, 10, 10);
+            drawTexturedModalRect(brushMeterX, brushMeterY, brushSpriteX, brushSpriteY - brushSpriteSize*3, brushSpriteSize, brushSpriteSize*4);
+
+            //Draw opactiy meter
+            drawTexturedModalRect(brushOpacityMeterX, brushOpacityMeterY, brushOpacitySpriteX, brushOpacitySpriteY , brushOpacitySpriteSize, brushOpacitySpriteSize*4+3);
+            drawTexturedModalRect(brushOpacityMeterX-1, brushOpacityMeterY-1 +brushOpacitySetting*(brushOpacitySpriteSize+1), 212, 240, 16, 16);
+
+            // Draw brush and outline
+            renderCursor(mouseX, mouseY);
+        }else{
+            Mouse.setGrabbed(false);
+            drawSigning();
         }
 
-        // Draw brush meter
-        for(int i=0; i<4; i++){
-            int y = brushMeterY + i*brushSpriteSize;
-            drawRect(brushMeterX, y, brushMeterX + 3, y + 3, currentColor.rgbVal());
-        }
-        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-        drawTexturedModalRect(brushMeterX, brushMeterY + (3 - brushSize)*brushSpriteSize, 15, 246, 10, 10);
-        drawTexturedModalRect(brushMeterX, brushMeterY, brushSpriteX, brushSpriteY - brushSpriteSize*3, brushSpriteSize, brushSpriteSize*4);
-
-        //Draw opactiy meter
-        drawTexturedModalRect(brushOpacityMeterX, brushOpacityMeterY, brushOpacitySpriteX, brushOpacitySpriteY , brushOpacitySpriteSize, brushOpacitySpriteSize*4+3);
-        drawTexturedModalRect(brushOpacityMeterX-1, brushOpacityMeterY +brushOpacitySetting*(brushOpacitySpriteSize+1), 212, 240, 16, 16);
-
-        // Draw brush and outline
-        renderCursor(mouseX, mouseY);
     }
 
     public static void setGLColor(PaletteUtil.Color c){
@@ -301,18 +403,73 @@ public class GuiCanvasEdit extends BasePalette {
         return x < brushOpacityMeterX + brushOpacitySpriteSize && x >= brushOpacityMeterX && y < brushOpacityMeterY + brushOpacitySpriteSize*4+3 && y >= brushOpacityMeterY;
     }
 
+    private void drawSigning() {
+        int i = (int)canvasX;
+        int j = (int)canvasY;
+
+        drawRect(i+10, j+10, i + 150, j + 150, 0xFFEEEEEE);
+        String s = this.canvasTitle;
+
+        if (!this.isSigned) {
+            if (this.updateCount / 6 % 2 == 0) {
+                s = s + "" + ChatFormatting.BLACK + "_";
+            } else {
+                s = s + "" + ChatFormatting.GRAY + "_";
+            }
+        }
+        String s1 = I18n.format("canvas.editTitle");
+        int k = mc.fontRenderer.getStringWidth(s1);
+        mc.fontRenderer.drawString(s1, (int)(i + 26 + (116 - k) / 2.0f), j + 16 + 16, 0);
+        int l = mc.fontRenderer.getStringWidth(s);
+        mc.fontRenderer.drawString( s, (int)(i + 26 + (116 - l) / 2.0f), j + 48, 0);
+        String s2 = I18n.format("canvas.byAuthor", this.editingPlayer.getName());
+        int i1 = mc.fontRenderer.getStringWidth(s2);
+        mc.fontRenderer.drawString(ChatFormatting.DARK_GRAY + s2,i + 26 + (116 - i1) / 2, j + 48 + 10, 0);
+        String s3 = I18n.format("canvas.finalizeWarning");
+        mc.fontRenderer.drawSplitString(s3, i + 26, j + 80, 116, 0);
+    }
+
     @Override
     public void keyTyped(char typedChar, int keyCode) throws IOException {
         super.keyTyped(typedChar, keyCode);
 
-        if(isKeyComboCtrlZ(keyCode)){
-            if(undoStack.size() > 0){
-                pixels = undoStack.pop();
+        if (!this.isSigned) {
+            if (this.gettingSigned) {
+                if (this.canvasTitle.length() < 16 && isAllowedCharacter(typedChar)) {
+                    this.canvasTitle = this.canvasTitle + typedChar;
+                    this.updateButtons();
+                }
             }
-        }else if(keyCode == Keyboard.KEY_O){
-            brushOpacitySetting += 1;
-            if(brushOpacitySetting >= 4){
-                brushOpacitySetting = 0;
+        }
+
+        if (this.gettingSigned) {
+            switch (keyCode) {
+                case Keyboard.KEY_BACK:
+                    if (!this.canvasTitle.isEmpty()) {
+                        this.canvasTitle = this.canvasTitle.substring(0, this.canvasTitle.length() - 1);
+                        this.updateButtons();
+                    }
+                    break;
+                case Keyboard.KEY_RETURN:
+                    if (!this.canvasTitle.isEmpty()) {
+                        dirty = true;
+                        this.isSigned = true;
+                        mc.displayGuiScreen(null);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }else{
+            if(isKeyComboCtrlZ(keyCode)){
+                if(undoStack.size() > 0){
+                    pixels = undoStack.pop();
+                }
+            }else if(keyCode == Keyboard.KEY_O){
+                brushOpacitySetting += 1;
+                if(brushOpacitySetting >= 4){
+                    brushOpacitySetting = 0;
+                }
             }
         }
     }
@@ -321,7 +478,7 @@ public class GuiCanvasEdit extends BasePalette {
     public void handleMouseInput() throws IOException {
         super.handleMouseInput();
         int wheelState = Mouse.getEventDWheel();
-        if (wheelState != 0) {
+        if (!gettingSigned && wheelState != 0) {
             if(inBrushOpacityMeter(Mouse.getX(), Mouse.getY())){
                 final int maxBrushOpacity = 3;
                 brushOpacitySetting += wheelState < 0 ? 1 : -1;
